@@ -1,0 +1,45 @@
+{
+  "entities": {
+    "UserSetting": {
+      "title": "User Global Settings",
+      "description": "Preferences for the wheel app",
+      "type": "object",
+      "properties": {
+        "darkMode": { "type": "boolean" },
+        "language": { "type": "string", "enum": ["en", "km"] },
+        "spinDuration": { "type": "number" },
+        "decelerationPower": { "type": "number" },
+        "currentPalette": { "type": "string" },
+        "indicatorStyle": { "type": "string" },
+        "indicatorColor": { "type": "string" },
+        "confettiStyle": { "type": "string" },
+        "winAnimationStyle": { "type": "string" },
+        "customWinMessage": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["updatedAt"]
+    },
+    "Preset": {
+      "title": "Saved Name List",
+      "description": "A named collection of participants",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "names": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "names", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserSetting",
+      "description": "User preferences and settings"
+    },
+    "/users/{userId}/presets/{presetId}": {
+      "schema": "Preset",
+      "description": "Saved wheel presets for the user"
+    }
+  }
+}

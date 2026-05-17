@@ -1,0 +1,6 @@
+{
+  "name": "Wheel of Names",
+  "description": "A modern, responsive random name picker wheel with cloud sync, multi-user support via Firebase, and smooth celebrations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

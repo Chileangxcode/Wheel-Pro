@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isVerified() {
+      // Mandating verified email for writes
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    function incoming() {
+      return request.resource.data;
+    }
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation Blueprints
+    function isValidUserSetting(data) {
+      // Basic schema check
+      return data.keys().hasAll(['updatedAt']) && 
+             data.keys().size() <= 12 &&
+             (data.get('darkMode', true) is bool) &&
+             (data.get('language', 'en') in ['en', 'km']) &&
+             (data.get('spinDuration', 5) is number) &&
+             (data.get('decelerationPower', 4) is number) &&
+             (data.get('indicatorStyle', 'shield') is string) &&
+             (data.get('indicatorColor', '#4f46e5') is string) &&
+             (data.get('confettiStyle', 'standard') is string) &&
+             (data.get('winAnimationStyle', 'zoom') is string) &&
+             (data.get('customWinMessage', '') is string) &&
+             (data.updatedAt == request.time);
+    }
+
+    function isValidPreset(data) {
+      return data.keys().hasAll(['name', 'names', 'updatedAt']) &&
+             data.keys().size() <= 6 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.names is list && data.names.size() <= 1000 &&
+             (data.names.size() == 0 || data.names[0] is string) &&
+             data.updatedAt == request.time;
+    }
+
+    match /users/{userId} {
+      // Apply ID hardening to the userId
+      allow get: if isOwner(userId) && isValidId(userId);
+      
+      allow create: if isOwner(userId) && isVerified() && isValidId(userId) && isValidUserSetting(incoming());
+      
+      allow update: if isOwner(userId) && isVerified() && isValidId(userId) && isValidUserSetting(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly([
+                      'darkMode', 'language', 'spinDuration', 'decelerationPower', 
+                      'currentPalette', 'indicatorStyle', 'indicatorColor', 
+                      'confettiStyle', 'winAnimationStyle', 'customWinMessage', 'updatedAt'
+                    ]);
+
+      match /presets/{presetId} {
+        // Secure list: enforced by the userId parent path
+        allow list: if isOwner(userId);
+        
+        allow get: if isOwner(userId) && isValidId(presetId);
+        
+        allow create: if isOwner(userId) && isVerified() && isValidId(presetId) && 
+                      isValidPreset(incoming()) &&
+                      incoming().get('createdAt', null) == request.time;
+                      
+        allow update: if isOwner(userId) && isVerified() && isValidId(presetId) && 
+                      isValidPreset(incoming()) &&
+                      (incoming().get('createdAt', null) == existing().get('createdAt', null)) &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['name', 'names', 'updatedAt']);
+                      
+        allow delete: if isOwner(userId) && isVerified() && isValidId(presetId);
+      }
+    }
+  }
+}
